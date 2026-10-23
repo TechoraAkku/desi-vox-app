@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "788210772055",
+    "project_id": "desi-vox",
+    "storage_bucket": "desi-vox.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:788210772055:android:329136e158a0a7a4179b12",
+        "android_client_info": {
+          "package_name": "com.michaelpvt.hyperlive"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "788210772055-jda3ai45gqrpo5ferubs02pgfusif3vg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.michaelpvt.hyperlive",
+            "certificate_hash": "ecad877d710975e710fcbb4c144277cc17344c42"
+          }
+        },
+        {
+          "client_id": "788210772055-l743lm1ndtl0boo4q4rgprh6b9bkudor.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqdOk9Dxvtk-XWbZ-yXmtAYyJ5Sk00zKQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "788210772055-l743lm1ndtl0boo4q4rgprh6b9bkudor.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
