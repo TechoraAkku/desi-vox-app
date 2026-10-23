@@ -10,6 +10,7 @@
     "backgroundColor": "#080410",
     "android": {
       "package": "com.michaelpvt.hyperlive",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#080410",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -33,7 +34,10 @@
         }
       ],
       "expo-image",
-      "expo-font"
+      "expo-font",
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,
