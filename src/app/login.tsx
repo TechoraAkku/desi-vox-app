@@ -3,25 +3,65 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import {
+  ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions,
+} from 'react-native';
+import { signInWithGoogle } from '../services/googleAuth';
 import colors from '../theme/colors';
 
+// Transparent logo made with remove_logo_bg.py (or exported from Figma)
 const logo = require('../assets/logo.png');
 
 type Gradient = readonly [string, string, ...string[]];
 const BG: Gradient = [colors.purple, colors.backgroundSecondary, colors.background, colors.black];
 const BG_STOPS = [0, 0.3, 0.65, 1] as const;
 
-export default function Login() {
+type Country = { name: string; flag: string; code: string; length: number; startsWith?: RegExp };
+// Add more countries here later
+const COUNTRIES: Country[] = [
+  { name: 'India', flag: '🇮🇳', code: '91', length: 10, startsWith: /^[6-9]/ },
+  { name: 'Nepal', flag: '🇳🇵', code: '977', length: 10, startsWith: /^9/ },
+  { name: 'Bangladesh', flag: '🇧🇩', code: '880', length: 10, startsWith: /^1/ },
+  { name: 'United Arab Emirates', flag: '🇦🇪', code: '971', length: 9, startsWith: /^5/ },
+];
+
+export default function LoginScreen() {
   const { width, height } = useWindowDimensions();
+  const [country, setCountry] = useState<Country>(COUNTRIES[0]);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [phone, setPhone] = useState('');
-  const valid = /^[6-9]\d{9}$/.test(phone);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const formW = width * 0.76;
+
+  const valid = phone.length === country.length && (!country.startsWith || country.startsWith.test(phone));
+
+  const pick = (c: Country) => {
+    setCountry(c);
+    setPhone((p) => p.slice(0, c.length));
+    setPickerOpen(false);
+  };
+
+  const onGoogle = async () => {
+    // Alert.alert('Debug', 'Google button pressed'); // temporary
+    // console.log('Google sign-in...');
+    if (googleLoading) return;
+    setGoogleLoading(true);
+    try {
+      const user = await signInWithGoogle();
+      if (!user) return; // cancelled
+      if (router.canDismiss()) router.dismissAll();
+      router.replace('/home' as any);
+    } catch (e: any) {
+      console.log('[Login] Google failed:', e?.code, e?.message);
+      Alert.alert('Sign-in failed', `${e?.code ?? ''} ${e?.message ?? 'Please try again.'}`);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const getOtp = () => {
     if (!valid) return;
-    // next screen: /otp (we build it after this one)
-    router.push({ pathname: '/otp', params: { phone } } as any);
+    router.push({ pathname: '/otp', params: { phone, code: country.code } } as any);
   };
 
   return (
@@ -32,20 +72,19 @@ export default function Login() {
         contentContainerStyle={{ minHeight: height, alignItems: 'center', paddingTop: height * 0.075, paddingBottom: 40 }}
       >
         <Image source={logo} contentFit="contain" style={{ width: width * 0.45, height: width * 0.45 }} />
-        <Text style={s.welcome}>Welcome Back</Text>
+        <Text style={s.welcome}>Welcome Back </Text>
 
-        {/* phone input */}
         <View style={[s.inputRow, { width: formW, marginTop: height * 0.065 }]}>
-          <TouchableOpacity style={s.country} activeOpacity={0.7}>
-            <Text style={{ fontSize: 16 }}>🇮🇳</Text>
-            <Text style={s.code}>91</Text>
+          <TouchableOpacity style={s.country} activeOpacity={0.7} onPress={() => setPickerOpen(true)}>
+            <Text style={{ fontSize: 16 }}>{country.flag}</Text>
+            <Text style={s.code}>{country.code}</Text>
             <Ionicons name="chevron-down" size={12} color={colors.textSecondary} />
           </TouchableOpacity>
           <TextInput
             value={phone}
-            onChangeText={(t) => setPhone(t.replace(/\D/g, '').slice(0, 10))}
+            onChangeText={(t) => setPhone(t.replace(/\D/g, '').slice(0, country.length))}
             keyboardType="number-pad"
-            maxLength={10}
+            maxLength={country.length}
             placeholder="Enter mobile number"
             placeholderTextColor={colors.placeholder}
             style={s.input}
@@ -73,11 +112,36 @@ export default function Login() {
           <View style={s.line} />
         </View>
 
-        <TouchableOpacity activeOpacity={0.8} style={s.google}>
-          <AntDesign name="google" size={18} color={colors.white} />
-          <Text style={s.googleText}>Continue with Google</Text>
+        <TouchableOpacity activeOpacity={0.8} style={s.google} onPress={onGoogle} disabled={googleLoading}>
+          {googleLoading ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <AntDesign name="google" size={18} color={colors.white} />
+          )}
+          <Text style={s.googleText}>{googleLoading ? 'Signing in...' : 'Continue with Google'}</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* country picker */}
+      <Modal visible={pickerOpen} transparent animationType="slide" onRequestClose={() => setPickerOpen(false)}>
+        <Pressable style={s.overlay} onPress={() => setPickerOpen(false)}>
+          <Pressable style={s.sheet} onPress={() => { }}>
+            <View style={s.handle} />
+            <Text style={s.sheetTitle}>Select country</Text>
+            {COUNTRIES.map((c) => {
+              const active = c.code === country.code;
+              return (
+                <TouchableOpacity key={c.code} style={s.row} activeOpacity={0.7} onPress={() => pick(c)}>
+                  <Text style={{ fontSize: 22 }}>{c.flag}</Text>
+                  <Text style={s.rowName}>{c.name}</Text>
+                  <Text style={s.rowCode}>+{c.code}</Text>
+                  {active && <Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
+                </TouchableOpacity>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -107,4 +171,14 @@ const s = StyleSheet.create({
     borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)',
   },
   googleText: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: colors.cardElevated, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingHorizontal: 20, paddingBottom: 32, paddingTop: 10, borderTopWidth: 1, borderColor: colors.borderGold,
+  },
+  handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: 14 },
+  sheetTitle: { color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  rowName: { flex: 1, color: colors.text, fontSize: 15 },
+  rowCode: { color: colors.textSecondary, fontSize: 14, marginRight: 6 },
 });

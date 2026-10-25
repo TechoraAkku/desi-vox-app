@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "HyperLive",
-    "slug": "HyperLive",
+    "name": "DesiVox",
+    "slug": "DesiVox",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "hyperlive",
+    "scheme": "desivox",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#080410",
     "android": {

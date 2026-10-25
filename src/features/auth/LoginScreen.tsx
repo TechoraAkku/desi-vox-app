@@ -4,8 +4,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-    Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions,
+  ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions,
 } from 'react-native';
+import { signInWithGoogle } from '../../services/googleAuth';
 import colors from '../../theme/colors';
 
 // Transparent logo made with remove_logo_bg.py (or exported from Figma)
@@ -29,6 +30,7 @@ export default function LoginScreen() {
   const [country, setCountry] = useState<Country>(COUNTRIES[0]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [phone, setPhone] = useState('');
+  const [googleLoading, setGoogleLoading] = useState(false);
   const formW = width * 0.76;
 
   const valid = phone.length === country.length && (!country.startsWith || country.startsWith.test(phone));
@@ -37,6 +39,24 @@ export default function LoginScreen() {
     setCountry(c);
     setPhone((p) => p.slice(0, c.length));
     setPickerOpen(false);
+  };
+
+  const onGoogle = async () => {
+    // Alert.alert('Debug', 'Google button pressed'); // temporary
+    // console.log('Google sign-in...');
+    if (googleLoading) return;
+    setGoogleLoading(true);
+    try {
+      const user = await signInWithGoogle();
+      if (!user) return; // cancelled
+      if (router.canDismiss()) router.dismissAll();
+      router.replace('/home' as any);
+    } catch (e: any) {
+      console.log('[Login] Google failed:', e?.code, e?.message);
+      Alert.alert('Sign-in failed', `${e?.code ?? ''} ${e?.message ?? 'Please try again.'}`);
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   const getOtp = () => {
@@ -52,7 +72,7 @@ export default function LoginScreen() {
         contentContainerStyle={{ minHeight: height, alignItems: 'center', paddingTop: height * 0.075, paddingBottom: 40 }}
       >
         <Image source={logo} contentFit="contain" style={{ width: width * 0.45, height: width * 0.45 }} />
-        <Text style={s.welcome}>Welcome Back</Text>
+        <Text style={s.welcome}>Welcome Back </Text>
 
         <View style={[s.inputRow, { width: formW, marginTop: height * 0.065 }]}>
           <TouchableOpacity style={s.country} activeOpacity={0.7} onPress={() => setPickerOpen(true)}>
@@ -92,16 +112,20 @@ export default function LoginScreen() {
           <View style={s.line} />
         </View>
 
-        <TouchableOpacity activeOpacity={0.8} style={s.google}>
-          <AntDesign name="google" size={18} color={colors.white} />
-          <Text style={s.googleText}>Continue with Google</Text>
+        <TouchableOpacity activeOpacity={0.8} style={s.google} onPress={onGoogle} disabled={googleLoading}>
+          {googleLoading ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <AntDesign name="google" size={18} color={colors.white} />
+          )}
+          <Text style={s.googleText}>{googleLoading ? 'Signing in...' : 'Continue with Google'}</Text>
         </TouchableOpacity>
       </ScrollView>
 
       {/* country picker */}
       <Modal visible={pickerOpen} transparent animationType="slide" onRequestClose={() => setPickerOpen(false)}>
         <Pressable style={s.overlay} onPress={() => setPickerOpen(false)}>
-          <Pressable style={s.sheet} onPress={() => {}}>
+          <Pressable style={s.sheet} onPress={() => { }}>
             <View style={s.handle} />
             <Text style={s.sheetTitle}>Select country</Text>
             {COUNTRIES.map((c) => {

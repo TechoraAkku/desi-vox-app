@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -6,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomNav from '../../components/BottomNav';
 import { useAuthStore } from '../../store/authStore';
 import colors from '../../theme/colors';
-import { DEMO_PROFILE as P } from './profileData';
+import { DEMO_PROFILE } from './profileData';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 type Gradient = readonly [string, string, ...string[]];
@@ -29,8 +30,12 @@ const soon = (title: string) => Alert.alert(title, 'This screen is coming soon.'
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const phone = useAuthStore((s) => s.phone);
+  const user = useAuthStore((s) => s.user);
+  const P = user ?? DEMO_PROFILE; // real user if logged in with Google, demo data otherwise
   const logout = useAuthStore((s) => s.logout);
 
+  const name = user?.name ?? P.name;
+  const userId = user?.userId || P.userId;
   const maskedPhone = phone && phone.length >= 4 ? `${phone.slice(0, 2)}••••••${phone.slice(-2)}` : null;
 
   const onLogout = () => {
@@ -54,7 +59,11 @@ export default function ProfileScreen() {
         <LinearGradient colors={HEADER_BG} style={[s.header, { paddingTop: insets.top + 16 }]}>
           <View style={s.avatarWrap}>
             <View style={s.avatar}>
-              <Ionicons name="person" size={46} color="#2B1733" />
+              {user?.photoURL ? (
+                <Image source={{ uri: user.photoURL }} style={{ width: 90, height: 90, borderRadius: 45 }} />
+              ) : (
+                <Ionicons name="person" size={46} color="#2B1733" />
+              )}
             </View>
             <TouchableOpacity style={s.camera} onPress={() => soon('Change photo')} accessibilityLabel="Change photo">
               <Ionicons name="camera" size={14} color={colors.textOnGold} />
@@ -62,7 +71,7 @@ export default function ProfileScreen() {
           </View>
 
           <View style={s.nameRow}>
-            <Text style={s.name}>{P.name}</Text>
+            <Text style={s.name}>{name}</Text>
             {P.vip && (
               <LinearGradient colors={GOLD} style={s.vip}>
                 <Ionicons name="diamond" size={10} color={colors.textOnGold} />
@@ -70,7 +79,7 @@ export default function ProfileScreen() {
               </LinearGradient>
             )}
           </View>
-          <Text style={s.meta}>ID: {P.userId}  •  {P.country}{maskedPhone ? `  •  ${maskedPhone}` : ''}</Text>
+          <Text style={s.meta}>ID: {userId}  •  {P.country}{maskedPhone ? `  •  ${maskedPhone}` : ''}</Text>
           <Text style={s.bio}>{P.bio}</Text>
 
           <View style={s.stats}>

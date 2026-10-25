@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useAuthStore } from '../../store/authStore';
 import colors from '../../theme/colors';
 
 // Transparent PNG (not the old .jpeg with the white box)
@@ -27,7 +28,10 @@ export default function SplashScreen() {
   useEffect(() => {
     const barAnim = Animated.timing(progress, { toValue: 1, duration: SPLASH_MS, useNativeDriver: false });
     barAnim.start(({ finished }) => {
-      if (finished) router.replace('/onboarding' as any);
+      if (!finished) return;
+      // already signed in (session restored)? go straight to Home
+      const loggedIn = useAuthStore.getState().isLoggedIn;
+      router.replace((loggedIn ? '/home' : '/onboarding') as any);
     });
     return () => barAnim.stop();
   }, [progress]);

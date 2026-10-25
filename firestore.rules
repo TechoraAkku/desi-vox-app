@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      // a user can create only their own profile, with a reserved 6-digit ID and 0 coins
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.coins == 0
+        && request.resource.data.userId is string
+        && request.resource.data.userId.matches('^[0-9]{6}$')
+        && getAfter(/databases/$(database)/documents/userIds/$(request.resource.data.userId)).data.uid == uid;
+      // userId, coins and createdAt can never be changed from the app
+      allow update: if signedIn() && request.auth.uid == uid
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'coins', 'createdAt']);
+      allow delete: if false;
+    }
+
+    // ID reservations: create once, never changed or deleted
+    match /userIds/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && id.matches('^[0-9]{6}$')
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}
