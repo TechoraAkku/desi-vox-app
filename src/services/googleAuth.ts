@@ -24,6 +24,10 @@ const MOCK_USER: AuthUser = {
   following: 245,
   coins: 2500,
   vip: true,
+  status: 'active',
+  hostStatus: 'none',
+  agencyId: null,
+  agencyRole: 'none',
 };
 
 const log = (...a: unknown[]) => console.log('[GoogleAuth]', ...a);

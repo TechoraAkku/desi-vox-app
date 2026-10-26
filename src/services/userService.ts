@@ -1,5 +1,5 @@
-import { doc, getDoc, getFirestore, runTransaction, serverTimestamp } from '@react-native-firebase/firestore';
-import type { AuthUser } from '../types/user';
+import { doc, getDoc, getFirestore, onSnapshot, runTransaction, serverTimestamp } from '@react-native-firebase/firestore';
+import type { AccountStatus, AgencyRole, AuthUser, HostStatus } from '../types/user';
 
 // Only the fields we need. Firebase's real user object fits this shape.
 type FirebaseUserLike = {
@@ -14,12 +14,12 @@ const randomSixDigit = () => String(Math.floor(100000 + Math.random() * 900000))
 // exists() is a method in the modular API; this also works if it is a property
 const exists = (snap: any): boolean => (typeof snap.exists === 'function' ? snap.exists() : !!snap.exists);
 
-function toAuthUser(uid: string, d: any): AuthUser {
+function toAuthUser(uid: string, d: any, email: string | null): AuthUser {
   return {
     uid,
     userId: String(d?.userId ?? ''),
     name: d?.name ?? 'User',
-    email: d?.email ?? null,
+    email,
     photoURL: d?.photoURL ?? null,
     country: d?.country ?? 'India',
     bio: d?.bio ?? '',
@@ -28,12 +28,16 @@ function toAuthUser(uid: string, d: any): AuthUser {
     following: Number(d?.following ?? 0),
     coins: Number(d?.coins ?? 0),
     vip: !!d?.vip,
+    status: (d?.status ?? 'active') as AccountStatus,
+    hostStatus: (d?.hostStatus ?? 'none') as HostStatus,
+    agencyId: d?.agencyId ?? null,
+    agencyRole: (d?.agencyRole ?? 'none') as AgencyRole,
   };
 }
 
 // Used when the profile could not be loaded (e.g. offline): keep the person logged in
 export function fallbackUser(fb: FirebaseUserLike): AuthUser {
-  return toAuthUser(fb.uid, { name: fb.displayName ?? 'User', email: fb.email, photoURL: fb.photoURL });
+  return toAuthUser(fb.uid, { name: fb.displayName ?? 'User', photoURL: fb.photoURL }, fb.email);
 }
 
 // Returns the user's profile. Creates it (with a UNIQUE 6-digit ID) on first login.
@@ -42,9 +46,10 @@ export function fallbackUser(fb: FirebaseUserLike): AuthUser {
 export async function ensureUserProfile(fb: FirebaseUserLike): Promise<AuthUser> {
   const db = getFirestore();
   const userRef = doc(db, 'users', fb.uid);
+  const email = fb.email ?? null;
 
   const quick = await getDoc(userRef);
-  if (exists(quick)) return toAuthUser(fb.uid, quick.data());
+  if (exists(quick)) return toAuthUser(fb.uid, quick.data(), email);
 
   const stored = await runTransaction(db, async (tx) => {
     const snap = await tx.get(userRef);
@@ -56,10 +61,10 @@ export async function ensureUserProfile(fb: FirebaseUserLike): Promise<AuthUser>
       const idSnap = await tx.get(idRef);
       if (exists(idSnap)) continue; // taken -> try another number
 
+      // Must match the "create" rule in firestore.rules exactly
       const profile = {
         userId: candidate,
         name: fb.displayName ?? 'New User',
-        email: fb.email ?? null,
         photoURL: fb.photoURL ?? null,
         country: 'India',
         bio: '',
@@ -68,6 +73,10 @@ export async function ensureUserProfile(fb: FirebaseUserLike): Promise<AuthUser>
         following: 0,
         vip: false,
         coins: 0, // placeholder; the real wallet will be server-side
+        status: 'active',
+        hostStatus: 'none',
+        agencyId: null,
+        agencyRole: 'none',
         createdAt: serverTimestamp(),
       };
       tx.set(idRef, { uid: fb.uid });
@@ -77,5 +86,18 @@ export async function ensureUserProfile(fb: FirebaseUserLike): Promise<AuthUser>
     throw new Error('Could not create a unique User ID. Please try again.');
   });
 
-  return toAuthUser(fb.uid, stored);
+  return toAuthUser(fb.uid, stored, email);
+}
+
+// Live updates of the user's own document (ban / suspend / profile edits show up instantly).
+// Returns a function that stops listening.
+export function watchUserProfile(fb: FirebaseUserLike, onChange: (u: AuthUser) => void): () => void {
+  const ref = doc(getFirestore(), 'users', fb.uid);
+  return onSnapshot(
+    ref,
+    (snap: any) => {
+      if (exists(snap)) onChange(toAuthUser(fb.uid, snap.data(), fb.email ?? null));
+    },
+    (e: unknown) => console.warn('Profile listener error:', e),
+  );
 }

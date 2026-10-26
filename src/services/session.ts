@@ -1,16 +1,24 @@
 import { getAuth, onAuthStateChanged } from '@react-native-firebase/auth';
 import { USE_MOCK_AUTH } from '../config/appConfig';
 import { useAuthStore } from '../store/authStore';
-import { ensureUserProfile, fallbackUser } from './userService';
+import { ensureUserProfile, fallbackUser, watchUserProfile } from './userService';
 
-// Restores the login when the app is opened again. Call once from the root layout.
+let stopWatching: (() => void) | null = null;
+const stopProfile = () => {
+  stopWatching?.();
+  stopWatching = null;
+};
+
+// Restores the login when the app is opened again and keeps the profile live.
+// Call once from the root layout.
 export function startSessionListener(): () => void {
   if (USE_MOCK_AUTH) {
     useAuthStore.getState().setInitialized();
     return () => {};
   }
-  return onAuthStateChanged(getAuth(), async (fb) => {
+  const stopAuth = onAuthStateChanged(getAuth(), async (fb) => {
     const store = useAuthStore.getState();
+    stopProfile();
     if (!fb) {
       if (store.user) store.logout(); // signed out elsewhere
       store.setInitialized();
@@ -24,5 +32,10 @@ export function startSessionListener(): () => void {
       store.setUser(fallbackUser(fb));
     }
     store.setInitialized();
+    stopWatching = watchUserProfile(fb, (u) => useAuthStore.getState().setUser(u));
   });
+  return () => {
+    stopProfile();
+    stopAuth();
+  };
 }

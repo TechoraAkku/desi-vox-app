@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomNav from '../../components/BottomNav';
+import UserAvatar from '../../components/UserAvatar';
 import { useAuthStore } from '../../store/authStore';
 import colors from '../../theme/colors';
 import { DEMO_PROFILE } from './profileData';
@@ -59,13 +59,9 @@ export default function ProfileScreen() {
         <LinearGradient colors={HEADER_BG} style={[s.header, { paddingTop: insets.top + 16 }]}>
           <View style={s.avatarWrap}>
             <View style={s.avatar}>
-              {user?.photoURL ? (
-                <Image source={{ uri: user.photoURL }} style={{ width: 90, height: 90, borderRadius: 45 }} />
-              ) : (
-                <Ionicons name="person" size={46} color="#2B1733" />
-              )}
+              <UserAvatar photoURL={user?.photoURL ?? null} size={90} />
             </View>
-            <TouchableOpacity style={s.camera} onPress={() => soon('Change photo')} accessibilityLabel="Change photo">
+            <TouchableOpacity style={s.camera} onPress={() => router.push('/edit-profile' as any)} accessibilityLabel="Change photo">
               <Ionicons name="camera" size={14} color={colors.textOnGold} />
             </TouchableOpacity>
           </View>
@@ -113,7 +109,7 @@ export default function ProfileScreen() {
                 key={m.label}
                 style={[s.row, i > 0 && s.rowDivider]}
                 activeOpacity={0.7}
-                onPress={() => soon(m.label)}
+                onPress={() => (m.label === 'Edit Profile' ? router.push('/edit-profile' as any) : soon(m.label))}
               >
                 <View style={s.rowIcon}>
                   <Ionicons name={m.icon} size={19} color={colors.primary} />
