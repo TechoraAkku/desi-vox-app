@@ -9,6 +9,11 @@ export const USERS: Record<string, ChatUser> = {
   sara: { id: 'sara', name: 'Sara', color: '#B6A4D9', online: true },
 };
 
+// Lets other screens add a user (for example a host loaded from Firestore) before opening the chat.
+export const registerChatUser = (u: ChatUser) => {
+  USERS[u.id] = u;
+};
+
 export const getUser = (id?: string): ChatUser =>
   (id && USERS[id]) || { id: id ?? 'unknown', name: 'User', color: '#B6A4D9', online: false };
 
